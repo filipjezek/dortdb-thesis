@@ -33,12 +33,14 @@ db = new DortDB({
     ]
 });
 ```
+  - it is possible to define new operators (which will all have the same precendece, similarly to Postgres custom operators) and functions
 
 
 - [ ] SQL queries
 - [ ] SQL data modification
 - [ ] Embedded JSON (Postgres style)
 - [ ] XML (HTML tree) queries
+- [ ] graphology Cypher showcase
 - [ ] AST should be exposed and documented (this way more plugins can be eventually written)
 - [ ] when it makes sense, use webassembly to improve speed
 - [ ] allow definition of indices over data (there was an in memory db index which uses SIMD in the literature)
