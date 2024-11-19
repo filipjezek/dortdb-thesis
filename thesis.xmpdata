@@ -1,7 +1,0 @@
-% Metadata to be stored in PDF, see documentation of the pdfx package for more details.
-
-\Author{Filip Ježek}
-\Title{In-memory database for web browser}
-\Keywords{SQL \sep Relational Data Model \sep JSON \sep In-memory database}
-\Subject{Abstract of thesis}
-\Publisher{Charles University}
