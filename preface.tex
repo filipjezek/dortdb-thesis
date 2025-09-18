@@ -1,3 +1,40 @@
 \chapter*{Introduction}
 \addcontentsline{toc}{chapter}{Introduction}
 
+\section*{Foreword}
+
+In recent years, the frontends of websites and web applications have grown increasingly more complex. Faster networks allow us to deliver more JavaScript while keeping the loading time within reasonable bounds. In many aspects, the architecture and scale of an interactive webpage are similar to those of a desktop application. In many cases, this comes hand in hand with a large volume and variety of application data that is kept in memory at any given moment and must be processed efficiently. Sometimes, it may even be desirable to provide the end users with the option to interact with such data directly. One possible solution is to introduce a way to query the JavaScript data structures using a standard query language.
+
+In this thesis, we will present an in-memory database built on top of existing JavaScript application data, implemented as a TypeScript package called DortDB. It makes possible scenarios where users visiting a website directly work with application data, for example, when filtering or projecting tables. It also allows programmers to simply and declaratively execute complex operations on diverse data while potentially speeding them up compared to a naive approach.
+
+We will also explore cross-model querying on heterogeneous data and introduce an approach based on combining multiple query languages rather than designing a completely new universal language. This approach allows us to express queries spanning multiple data models intuitively. It is also inherently extensible and modular, and thus suitable for scenarios where it is necessary to cater to different requirements for different applications.
+
+\section*{Goals}
+
+Our target environment is the web browser, meaning every byte counts. The package must be as small as possible. In modern web development, code using third-party packages is usually bundled, and unused package exports and dead code branches are discarded during a process called tree shaking. Examples of bundlers offering such functionality include webpack\footnote{\url{https://webpack.js.org/}} or Rollup\footnote{\url{https://rollupjs.org/}}. In order to save space, the functionality of DortDB must be decomposed into many small, decoupled units. The consuming developer would then import only those parts of DortDB he wants to use, thus avoiding bundling features, which would ultimately be just dead weight. For instance, an application working with time series has no need for spatial indices.
+
+Given the many diverse shapes that application internal data structures may take, the question of a suitable query language naturally arises. Different languages are appropriate for different tasks, and each developer can have entirely different requirements. We want to ensure viability for as many users as possible.
+
+Building on the previous two points, modularity and adaptability, allowing user extensions would also be advisable. The amount of work we can offer in this thesis is not infinite, and there are sure to be many features that we will be unable to add, be it due to time constraints or lack of imagination. We must, therefore, take care in designing clear interfaces and extension points. Developers using this library must have the option to add their custom in-language functions, aggregators, or perhaps operators. We should explore the possibility of non-trivial plugins, like, e.g., new types of indices.
+
+Parsing a language is not easy. When designing a user interface for end users to input their own queries, one would usually want to implement some kind of syntax highlighting or even formatting of the code. Exposing the abstract syntax tree that the package itself builds would definitely make the task more manageable. It would also enable programmatic manipulation of previously input queries, such as inverting a sort field based on some user interaction.
+
+Last but not least, we must strive to execute the queries as fast and efficiently as possible. We know that parsing the text input and building ASTs will incur significant overhead, especially for simple queries on small data. The main benefit of DortDB will be the ease of expression when the queries get really complex. Nevertheless, we need to alleviate the speed impact as much as possible. Our approaches will include query plan optimization and the creation of secondary indices.
+
+\section*{Thesis structure}
+
+This thesis is structured into 10 numbered chapters. The overview of the chapters is as follows:
+
+\begin{description}
+    \item[\nameref{chap:background}] In the first chapter, we will briefly cover the required background for the thesis. We will outline the current landscape of modern web development and introduce the concept of multimodel data, highlighting its relevance and growing importance in database systems.
+    \item[\nameref{chap:basic-concepts}] In the second chapter, we will introduce DortDB, the software developed as a part of this thesis. We will describe its design and the motivation behind its development, setting the foundation for the discussions in subsequent chapters.
+    \item[\nameref{chap:implemented-langs}] The third chapter takes a closer look at the query languages implemented during the development of DortDB. It outlines the core syntax and semantics of each language, compares them with their official specifications, and explains the design choices and trade-offs made during implementation.
+    \item[\nameref{chap:multilang-queries}] The fourth chapter presents the concept of multilanguage queries and language switching. It introduces the unified algebra, which forms the formal foundation of DortDB.
+    \item[\nameref{chap:optimization}] In the fifth chapter, we address query optimization strategies applied in DortDB. We describe the optimizer, the design of secondary indices, and detail the techniques used to improve performance.
+    \item[\nameref{chap:benchmarks}] Chapter six presents benchmarking results for DortDB. We evaluate the framework, comparing execution times and resource usage with other established systems.
+    \item[\nameref{chap:implementation}]  The seventh chapter provides a deep dive into the implementation details of DortDB. It covers key modules, the overall architecture, and the query execution pipeline.
+    \item[\nameref{chap:usage}] In chapter eight, we demonstrate how DortDB can be used in practice. This includes the DortDB GUI and its developer API. The goal is to show how the system can be adopted and extended by users and developers.
+    \item[\nameref{chap:related-work}] The ninth chapter surveys related work in the areas of multimodel queries and in-memory JavaScript databases.
+    \item[\nameref{chap:future-work}] Finally, chapter ten outlines directions for future work. We discuss potential extensions to DortDB, such as support for additional data models and languages or further optimization opportunities.
+\end{description}
+

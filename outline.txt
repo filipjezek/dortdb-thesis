@@ -1,0 +1,20 @@
+intro
+  - goals
+- context
+  - multimodel queries
+  - web environment
+- basic concepts 
+  - inspiration
+- supported languages
+  - different language approaches
+- language switching
+    - unified algebra
+- optimization
+- evaluation
+- architecture, implementation
+- usage
+  - showcase
+  - programmatic usage
+  - extensibility
+- related work
+- future work

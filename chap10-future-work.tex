@@ -1,0 +1,38 @@
+\chapter{Future Work}
+\label{chap:future-work}
+
+The developed software is a solid foundation for multimodel queries in the web browser. However, there are many areas for improvement. The current implementation is the result of more than a year of development, but there are only so many features we could implement in the timeframe. The following are key directions for further efforts.
+
+\section{Language improvements}
+
+The currently implemented languages are not entirely complete. The missing features are detailed in relevant sections in chapter \ref{chap:implemented-langs}. We believe that the most immediate feature to add should be the selection of all attributes using the asterisk \texttt{*} in SQL. DortDB aims for ease of use for both users and developers, and the ability to quickly select a row from a table and see all of the columns without needing to remember the schema would be a significant improvement. The drawback will likely be the disabling of optimizer rules wherever the asterisk participates in \texttt{projections}, as the exact schema of the resulting tuples will not be possible to ascertain. There is also currently no support for shortest path matching, besides a very rudimentary and unoptimized approach.
+
+Besides the languages we already have, DortDB would definitely benefit from more. There is currently no language aimed specifically at JSON data, although it is possible to use XQuery with a suitable data adapter, or SQL with JSON operators. Furthermore, it would be interesting to implement and test academia-driven languages like MMQL\cite{DBLP:journals/is/KoupilCH25}, which aims to universally query any data model.
+
+\section{Additional optimization}
+
+While we have provided several optimizations as a starting point, the benchmarks show that there are areas in which they are lacking. The graph model optimizations are currently only really focused on faster graph joins, but do not modify the direction or patterns of the graph traversal itself. As an example, in UniBench query 4, there is a recursive graph traversal pattern:
+
+\begin{minted}{cypher}
+MATCH (:person {id: toptwo[0]})-[:knows *..3]->(foaf)
+  <-[:knows *..3]-({id: toptwo[1]})}
+RETURN foaf
+\end{minted}
+
+DortDB executes this query as a node lookup, followed by two recursions. Even though filters are applied throughout, the number of nodes in memory grows exponentially through up to six steps. The same result could be achieved much faster if we split the graph traversal into two, beginning at the two ends of the original pattern, and intersect the results. The following is not a real Cypher query, as Cypher does not feature any set operations except \texttt{UNION}.
+
+\begin{minted}[ignorelexererrors=true]{cypher}
+MATCH (:person {id: toptwo[0]})-[:knows *..3]->(foaf)
+RETURN foaf
+INTERSECT
+MATCH (:person {id: toptwo[1]})-[:knows *..3]->(foaf)
+RETURN foaf
+\end{minted}
+
+Moreover, DortDB currently cannot index XQuery expressions such as this. 
+\mint{xquery}{$Invoices/invoice.xml[OrderId eq 13]} 
+Indexing XML trees would very noticeably improve our UniBench results in several queries. There is also no \texttt{join} reordering optimizer rule, although it is debatable whether it would be viable, given that DortDB collects no statistics on the registered data sources.
+
+\section{New features}
+
+Currently, DortDB suffices for general data queries. Nevertheless, it could be extended with entirely new features. One such example would be an asynchronous query executor. That would enable users to add user-defined functions that return promises, leading to, e.g., functions to fetch remote resources or to query databases over the network. DortDB could also be extended with data manipulation capabilities, allowing for creating, updating, or deleting data. The combination of asynchronicity and data manipulation could be a use case for a transaction manager, even though JavaScript makes it hard to truly run into any race condition conflicts.

@@ -1,0 +1,367 @@
+\chapter{UniBench queries}
+\label{apx:unibench-queries}
+\floatname{listing}{Query}
+\setcounter{listing}{0}
+
+The following are the DortDB versions of the UniBench\cite{zhang2018unibench} queries.
+
+\begin{listing}[!ht]
+\begin{minted}{sql}
+SELECT
+  ROW(
+    customers.id AS id,
+    customers.firstName AS firstName,
+    customers.lastName AS lastName
+  ) profile,
+  ARRAY(SELECT ROW(
+    orders.OrderId as orderId,
+    orders.Orderline AS orderline,
+    orders.TotalPrice AS totalPrice
+  ) FROM orders WHERE PersonId = customers.id) orders,
+  ARRAY(SELECT ROW(
+    feedback.productAsin AS asin,
+    feedback.feedback AS feedback
+  ) FROM feedback WHERE personId = customers.id) feedback,
+  ARRAY(
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{cypher}
+    LANG cypher
+    MATCH ({id: customers.id})<-[:hasCreator]-(post)
+    RETURN post
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{sql}
+  ) posts
+FROM customers
+WHERE id = :customerId
+\end{minted}
+\caption{For a given \textbf{CUSTOMER}, find their profile,
+orders, feedback, and posts.}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}{sql}
+SELECT id, firstName FROM customers
+WHERE EXISTS (
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni, ignorelexererrors=true]{cypher}
+  LANG cypher
+  MATCH (:person {id: customers.id})<-[:hasCreator]-
+    (post)-[:hasTag]->({id: $productId})
+  RETURN 1
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{sql}
+) AND EXISTS (
+  SELECT 1 FROM orders
+  WHERE PersonId = customers.id AND EXISTS (
+    SELECT 1 FROM unwind(orders.Orderline) orderline
+    WHERE productId = :productId
+  )
+)
+\end{minted}
+\caption{For a given \textbf{PRODUCT}, find the persons who had bought it and posted on it.}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}{sql}
+SELECT customers.id, feedback.feedback, products.productId
+FROM customers
+JOIN feedback ON customers.id = feedback.personId
+JOIN products ON feedback.productAsin = products.asin
+WHERE products.productId = :productId
+AND (feedback.feedback[1])::number < 3
+AND EXISTS (
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{cypher}
+  LANG cypher
+  MATCH ({id: customers.id})<-[:hasCreator]-(post)-[:hasTag]->
+    ({id: products.productId})
+  RETURN 1
+)
+\end{minted}
+\caption{For a given \textbf{PRODUCT}, find persons who have commented and posted on it, and detect negative sentiments from them.}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[style=manni]{cypher}
+UNWIND (
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{sql}
+  LANG sql
+  SELECT PersonId::number
+  FROM orders
+  GROUP BY PersonId
+  ORDER BY sum(TotalPrice) DESC
+  LIMIT 2
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{cypher}
+) AS toptwo
+WITH collect(toptwo) AS toptwo
+MATCH (:person {id: toptwo[0]})-[:knows *..3]->(foaf)
+  <-[:knows *..3]-({id: toptwo[1]})
+RETURN foaf
+\end{minted}
+\caption{Find the top-2 persons who spend the highest amount of money in orders. Then for each person, traverse their knows-graph with 3-hop to find the friends, and finally return the common friends of these two persons.}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[style=manni, ignorelexererrors=true]{cypher}
+MATCH (:person {id: $personId})-[:knows]->(person)<-[:hasCreator]-
+  ()-[:hasTag]->(tag)
+WHERE EXISTS {
+  LANG xquery
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{xquery}
+  $Invoices/Invoices/Invoice.xml[
+    PersonId=$person/@id
+  ]/Orderline[brand=$param:brand]
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{cypher}
+}
+RETURN DISTINCT tag.id
+\end{minted}
+\caption{The query description given in the original paper is completely different from example implementations for ArangoDB, OrientDB, and AgensGraph that are part of the UniBench repository. The actual queries can be described as "what did the friends of \textbf{CUSTOMER} who bought \textbf{BRAND} products post about?"}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}{sql}
+SELECT x.value AS productId FROM (
+  LANG xquery
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{xquery}
+  for $interPerson in (
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[ignorelexererrors=true]{cypher}
+    LANG cypher
+    MATCH (:person {id: $customerId1})-[edges:knows*]-
+      ({id: $customerId2})
+    WITH [e in edges[1..-1] | [startNode(e), endNode(e)]] AS edges
+    LIMIT 1 §\textcolor{teal}{\texttt{// \textit{recursion is BFS, so this is the shortest path}}}§
+    UNWIND edges AS edge
+    UNWIND edge AS person
+    RETURN DISTINCT person.id
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{xquery}
+  ), $productId in $Invoices/Invoices/Invoice.xml[
+    PersonId=$interPerson
+  ]//productId
+  group by $num := number($productId)
+  order by fn:count($productId) descending
+  return $num
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{sql}
+) x
+LIMIT 3
+\end{minted}
+\caption{Given \textbf{CUSTOMER 1} and \textbf{CUSTOMER 2}, find persons in the shortest path between them in the subgraph, and return the TOP 3 best sellers from all these persons’ purchases.}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}{sql}
+SELECT feedback.feedback FROM feedback
+JOIN brandProducts
+ON brandProducts.productAsin = feedback.productAsin
+WHERE brandProducts.brandName = :brand
+AND feedback.feedback[1]::number < 4
+AND (
+  LANG xquery
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{xquery}
+  for $interPerson in (
+  let $now := date('2024-12-31') (: the data is static :)
+  let $recent := $Invoices/Invoices/Invoice.xml[ 
+    date(OrderDate) gt date:sub($now, interval('6 months'))
+  ][Orderline/asin = $brandProducts.productAsin]
+  let $old := $Invoices/Invoices/Invoice.xml[ 
+    date(OrderDate) le date:sub($now, interval('6 months')) and
+    date(OrderDate) gt date:sub($now, interval('12 months'))
+  ][Orderline/asin = $brandProducts.productAsin]
+  return fn:count($recent) lt fn:count($old)
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{sql}
+)
+\end{minted}
+\caption{For the products of a given \textbf{VENDOR} with declining sales, analyze the reviews for these items to see if there are any negative sentiments.}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}{sql}
+SELECT x.value->'id' AS productId, x.value->'sales' AS sales,
+x.value->'popularity' || '%' AS popularity
+FROM (
+  LANG xquery
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{xquery}
+  let $categoryProducts := (
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{sql}
+    LANG sql
+    SELECT products.productId
+    FROM products
+    JOIN brandProducts ON products.asin = brandProducts.productAsin
+    JOIN vendors ON brandProducts.brandName = vendors.id
+    WHERE vendors.Industry = :industry
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{xquery}
+  ),
+  $yrAgo := date:sub(date('2024-12-31'), interval('1y')),
+  (: there are no posts newer than 2012 in the dataset :)
+  $postsYrAgo := date('2011-12-31')
+  let $totalPosts := (
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{cypher}
+    LANG cypher
+    UNWIND categoryProducts AS pid
+    MATCH ({id: pid})<-[:hasTag]-(p)
+    WHERE p.creationDate > postsYrAgo
+    RETURN count(p)
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{xquery}
+  )
+
+  for $pid in $categoryProducts
+  let $soldProducts := $Invoices/Invoices/Invoice.xml[
+    date(OrderDate) gt $yrAgo
+  ]/Orderline[productId eq $pid],
+  $relatedPosts := (
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{cypher}
+    LANG cypher
+    MATCH ({id: pid})<-[:hasTag]-(p)
+    WHERE p.creationDate > postsYrAgo
+    RETURN count(p)
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{xquery}
+  )
+  return <product
+    id="{ $pid }"
+    sales="{ sum($soldProducts/price/number()) }"
+    popularity="{ $relatedPosts div $totalPosts * 100 }"
+  />
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{sql}
+) x
+\end{minted}
+\caption{For all the products of a given \textbf{CATEGORY} during a given year, compute its total sales amount, and measure its popularity in the social media. The alternative no element version simply removes the outer SQL layer and instead of an XML element returns the sales amount.}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}{sql}
+SELECT
+  topVendors.id,
+  (
+    SELECT
+      count(*) FILTER (WHERE gender = 'male') /
+      count(*) FILTER (WHERE gender = 'female')
+    FROM customers
+    WHERE EXISTS (
+      SELECT 1 FROM orders WHERE PersonId = customers.id
+      AND Orderline @> ARRAY[ROW(topVendors.id AS brand)]
+    )
+  ) mfRatio,
+  ARRAY(
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{cypher}
+    LANG cypher
+    UNWIND (
+      LANG sql
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{sql}
+      SELECT products.productId
+      FROM products
+      JOIN brandProducts
+      ON products.asin = brandProducts.productAsin
+      WHERE brandProducts.brandName = topVendors.id
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{cypher}
+    ) AS productId
+    MATCH ({id: productId})<-[:hasTag]-(post)
+    RETURN post
+    ORDER BY post.creationDate DESC LIMIT 5
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{sql}
+  ) latestPosts
+FROM (
+  SELECT
+    vendors.id,
+    (
+      LANG xquery
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{xquery}
+      let $sales := $Invoices/Invoices/Invoice.xml
+        /Orderline[brand = $vendors:id]
+      return fn:count($sales)
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{sql}
+    ) sales
+  FROM vendors
+  WHERE Country = :country
+  ORDER BY sales DESC
+  LIMIT 3
+) topVendors
+\end{minted}
+\caption{Find top-3 companies who have the largest amount of sales at one \textbf{COUNTRY}, for each company, compare the number of the male and female customers, and return the most recent posts of them.}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}{sql}
+SELECT
+  orders.PersonId,
+  topPosters.interests,
+  MAX(orders.OrderDate) recency,
+  COUNT(orders.PersonId) frequency,
+  SUM(orders.TotalPrice) monetary,
+  ARRAY(
+    SELECT feedback FROM feedback
+    WHERE personId = orders.PersonId
+    LIMIT 10
+  ) recentReviews
+FROM orders JOIN (
+\end{minted}
+\nestedMintedVspace
+\begin{minted}[style=manni]{cypher}
+  LANG cypher
+  MATCH (cust)<-[:hasCreator]-(post)
+  WHERE post.creationDate >
+    date.sub(date("2011-12-31"), interval("1 year"))
+  WITH DISTINCT cust, count(post) AS postCount
+  ORDER BY postCount DESC LIMIT 10
+  MATCH (cust)-[:hasInterest]->(tag)
+  RETURN cust.id AS custId, collect(tag.id) AS interests
+\end{minted}
+\nestedMintedVspace
+\begin{minted}{sql}
+) topPosters
+ON orders.PersonId = topPosters.custId
+GROUP BY orders.PersonId, topPosters.interests
+\end{minted}
+\caption{Find the top-10 most active persons by aggregating the posts during the last year, then calculate their RFM (Recency, Frequency, Monetary) value in the same period, and return their recent reviews and tags of interest}
+\end{listing}

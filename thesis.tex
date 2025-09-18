@@ -55,23 +55,28 @@
 \usepackage{textcomp}
 \fi
 
+
 %% Further useful packages (included in most LaTeX distributions)
-\usepackage{amsmath}        % extensions for typesetting of math
-\usepackage{amsfonts}       % math fonts
-\usepackage{amsthm}         % theorems, definitions, etc.
-\usepackage{bm}             % boldface symbols (\bm)
-\usepackage{booktabs}       % improved horizontal lines in tables
-\usepackage{caption}        % custom captions of floating objects
-\usepackage{dcolumn}        % improved alignment of table columns
-\usepackage{floatrow}       % custom float environments
-\usepackage{graphicx}       % embedding of pictures
-\usepackage{indentfirst}    % indent the first paragraph of a chapter
-\usepackage[nopatch=item]{microtype}   % micro-typographic refinement
-\usepackage{paralist}       % improved enumerate and itemize
+\usepackage{amsmath} % extensions for typesetting of math
+\usepackage{amsfonts} % math fonts
+\usepackage{amsthm} % theorems, definitions, etc.
+\usepackage{bm} % boldface symbols (\bm)
+\usepackage{booktabs} % improved horizontal lines in tables
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{caption} % custom captions of floating objects
+\usepackage{dcolumn} % improved alignment of table columns
+\usepackage{floatrow} % custom float environments
+\usepackage{graphicx} % embedding of pictures
+\usepackage{indentfirst} % indent the first paragraph of a chapter
+\usepackage[nopatch=item]{microtype} % micro-typographic refinement
+\usepackage{paralist} % improved enumerate and itemize
 \usepackage[nottoc]{tocbibind} % makes sure that bibliography and the lists
-			    % of figures/tables are included in the table
-			    % of contents
-\usepackage{xcolor}         % typesetting in color
+			 % of figures/tables are included in the table
+			 % of contents
+\usepackage{xcolor} % typesetting in color
+\usepackage{color} % /*KOP for the command \textcolor*/
+\usepackage{soul} % /*KOP  for the command \hl - highlighted text*/
 
 % The hyperref package for clickable links in PDF and also for storing
 % metadata to PDF (including the table of contents).
@@ -80,10 +85,15 @@
 \hypersetup{breaklinks=true}
 
 % Packages for computer science theses
-\usepackage{algpseudocode}  % part of algorithmicx package
+\usepackage{algpseudocode} % part of algorithmicx package
 \usepackage{algorithm}
-\usepackage{fancyvrb}       % improved verbatim environment
-\usepackage{listings}       % pretty-printer of source code
+\usepackage{verbatim}
+\usepackage{fancyvrb} % improved verbatim environment
+%\usepackage{listings} % pretty-printer of source code
+\usepackage{minted}
+\usepackage{svg}
+\usepackage{subcaption}
+\usepackage{tcolorbox}
 
 % You might want to use cleveref for references
 % \usepackage{cleveref}
@@ -126,9 +136,16 @@
 
 %%% Each chapter is kept in a separate file
 \include{preface}
-\include{chap01}
-\include{chap02}
-
+\include{chap01-context}
+\include{chap02-basic-concepts}
+\include{chap03-implemented-langs}
+\include{chap04-language-switching}
+\include{chap05-optimization}
+\include{chap06-benchmarks}
+\include{chap07-implementation}
+\include{chap08-usage}
+\include{chap09-related-work}
+\include{chap10-future-work}
 \include{epilog}
 
 %%% Bibliography
@@ -139,11 +156,11 @@
 
 %%% Tables used in the thesis (consider if this is needed)
 %%% In mathematical theses, it could be better to move the list of tables to the beginning of the thesis.
-\listoftables
+%\listoftables
 
 %%% Abbreviations used in the thesis, if any, including their explanation
 %%% In mathematical theses, it could be better to move the list of abbreviations to the beginning of the thesis.
-\chapwithtoc{List of Abbreviations}
+%\chapwithtoc{List of Abbreviations}
 
 %%% Doctoral theses must contain a list of author's publications
 \ifx\ThesisType\TypePhD
@@ -161,8 +178,12 @@
 %%% should be uploaded to SIS. Allowed file formats are specified in provision
 %%% of the rector no. 72/2017. Exceptions can be approved by faculty's coordinator.
 \appendix
+\include{appendix-unibench-queries}
+\include{appendix-tpch-queries}
 \chapter{Attachments}
 
-\section{First Attachment}
+\section{Source code}
+
+A part of this thesis is the source code for the implemented software. The source code is also available at \url{https://github.com/filipjezek/dortdb}.
 
 \end{document}

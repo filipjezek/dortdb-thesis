@@ -1,0 +1,758 @@
+\chapter{TPC-H queries}
+\label{apx:tpch-queries}
+\floatname{listing}{Query}
+\setcounter{listing}{0}
+
+The following are the DortDB versions of the TPC-H queries.
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    l.returnflag,
+    l.linestatus,
+    sum(l.quantity) as sum_qty,
+    sum(l.extendedprice) as sum_base_price,
+    sum(l.extendedprice * (1 - l.discount)) as sum_disc_price,
+    sum(l.extendedprice * (1 - l.discount) * (1 + l.tax))
+      as sum_charge,
+    avg(l.quantity) as avg_qty,
+    avg(l.extendedprice) as avg_price,
+    avg(l.discount) as avg_disc,
+    count(*) as count_order
+from
+    lineitem l
+where
+    l.shipdate <= date.sub('1998-12-01'::date, interval('70 days'))
+group by
+    l.returnflag,
+    l.linestatus
+order by
+    l.returnflag,
+    l.linestatus;
+\end{minted}
+\caption{Pricing Summary Report Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    s.acctbal,
+    s.name,
+    n.name,
+    p.partkey,
+    p.mfgr,
+    s.address,
+    s.phone,
+    s.comment
+from
+    part p,
+    supplier s,
+    partsupp ps,
+    nation n,
+    region r
+where
+    p.partkey = ps.partkey
+    and s.suppkey = ps.suppkey
+    and p.size = 31
+    and p.type like '%NICKEL'
+    and s.nationkey = n.nationkey
+    and n.regionkey = r.regionkey
+    and r.name = 'AMERICA'
+    and ps.supplycost = (
+        select
+            min(ps.supplycost)
+        from
+            partsupp ps,
+            supplier s,
+            nation n,
+            region r
+        where
+            p.partkey = ps.partkey
+            and s.suppkey = ps.suppkey
+            and s.nationkey = n.nationkey
+            and n.regionkey = r.regionkey
+            and r.name = 'AMERICA'
+    )
+order by
+    s.acctbal desc,
+    n.name,
+    s.name,
+    p.partkey
+limit 100;
+\end{minted}
+\caption{Minimum Cost Supplier Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    l.orderkey,
+    sum(l.extendedprice * (1 - l.discount)) as revenue,
+    o.orderdate,
+    o.shippriority
+from
+    customer c,
+    orders o,
+    lineitem l
+where
+    c.mktsegment = 'HOUSEHOLD'
+    and c.custkey = o.custkey
+    and l.orderkey = o.orderkey
+    and o.orderdate < '1995-03-09'::date
+    and l.shipdate > '1995-03-09'::date
+group by
+    l.orderkey,
+    o.orderdate,
+    o.shippriority
+order by
+    revenue desc,
+    o.orderdate
+limit 10;
+\end{minted}
+\caption{Shipping Priority Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    o.orderpriority,
+    count(*) as order_count
+from
+    orders o
+where
+    o.orderdate >= '1994-05-01'::date
+    and o.orderdate < date.add('1994-05-01'::date, interval('3 months'))
+    and exists (
+        select
+            1
+        from
+            lineitem l
+        where
+            l.orderkey = o.orderkey
+            and l.commitdate < l.receiptdate
+    )
+group by
+    o.orderpriority
+order by
+    o.orderpriority;
+\end{minted}
+\caption{Order Priority Checking Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    n.name,
+    sum(l.extendedprice * (1 - l.discount)) as revenue
+from
+    customer c,
+    orders o,
+    lineitem l,
+    supplier s,
+    nation n,
+    region r
+where
+    c.custkey = o.custkey
+    and l.orderkey = o.orderkey
+    and l.suppkey = s.suppkey
+    and c.nationkey = s.nationkey
+    and s.nationkey = n.nationkey
+    and n.regionkey = r.regionkey
+    and r.name = 'ASIA'
+    and o.orderdate >= '1997-01-01'::date
+    and o.orderdate <
+      date.add('1997-01-01'::date, interval('1 year'))
+group by
+    n.name
+order by
+    revenue desc;
+\end{minted}
+\caption{Local Supplier Volume Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    sum(l.extendedprice * l.discount) as revenue
+from
+    lineitem l
+where
+    l.shipdate >= '1997-01-01'::date
+    and l.shipdate <
+      date.add('1997-01-01'::date, interval('1 year'))
+    and l.discount between 0.08 - 0.01 and 0.08 + 0.01
+    and l.quantity < 24;
+\end{minted}
+\caption{Forecasting Revenue Change Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    shipping.supp_nation,
+    shipping.cust_nation,
+    shipping.year,
+    sum(shipping.volume) as revenue
+from
+    (
+        select
+            n1.name as supp_nation,
+            n2.name as cust_nation,
+            date.extract(l.shipdate, 'year') as year,
+            l.extendedprice * (1 - l.discount) as volume
+        from
+            supplier s,
+            lineitem l,
+            orders o,
+            customer c,
+            nation n1,
+            nation n2
+        where
+            s.suppkey = l.suppkey
+            and o.orderkey = l.orderkey
+            and c.custkey = o.custkey
+            and s.nationkey = n1.nationkey
+            and c.nationkey = n2.nationkey
+            and (
+                (
+                    n1.name = 'ROMANIA' and
+                    n2.name = 'BRAZIL'
+                ) or (
+                    n1.name = 'BRAZIL' and
+                    n2.name = 'ROMANIA'
+                )
+            )
+            and l.shipdate between '1995-01-01'::date
+              and '1996-12-31'::date
+    ) as shipping
+group by
+    shipping.supp_nation,
+    shipping.cust_nation,
+    shipping.year
+order by
+    shipping.supp_nation,
+    shipping.cust_nation,
+    shipping.year;
+\end{minted}
+\caption{Volume Shipping Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    all_nations.year,
+    sum(case
+        when all_nations.nation = 'BRAZIL' then
+            all_nations.volume
+        else 0
+    end) / sum(all_nations.volume) as mkt_share
+from
+    (
+        select
+            date.extract(o.orderdate, 'year') as year,
+            l.extendedprice * (1 - l.discount) as volume,
+            n2.name as nation
+        from
+            part p,
+            supplier s,
+            lineitem l,
+            orders o,
+            customer c,
+            nation n1,
+            nation n2,
+            region r
+        where
+            p.partkey = l.partkey
+            and s.suppkey = l.suppkey
+            and l.orderkey = o.orderkey
+            and o.custkey = c.custkey
+            and c.nationkey = n1.nationkey
+            and n1.regionkey = r.regionkey
+            and r.name = 'AMERICA'
+            and s.nationkey = n2.nationkey
+            and o.orderdate between '1995-01-01'::date
+              and '1996-12-31'::date
+            and p.type = 'LARGE POLISHED NICKEL'
+    ) as all_nations
+group by
+    all_nations.year
+order by
+    all_nations.year;
+\end{minted}
+\caption{National Market Share Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    profit.nation,
+    profit.year,
+    sum(profit.amount) as sum_profit
+from
+    (
+        select
+            n.name as nation,
+            date.extract(o.orderdate, 'year') as year,
+            l.extendedprice * (1 - l.discount) - 
+              ps.supplycost * l.quantity as amount
+        from
+            part p,
+            supplier s,
+            lineitem l,
+            partsupp ps,
+            orders o,
+            nation n
+        where
+            s.suppkey = l.suppkey
+            and ps.suppkey = l.suppkey
+            and ps.partkey = l.partkey
+            and p.partkey = l.partkey
+            and o.orderkey = l.orderkey
+            and s.nationkey = n.nationkey
+            and p.name like '%navy%'
+    ) as profit
+group by
+    profit.nation,
+    profit.year
+order by
+    profit.nation,
+    profit.year desc;
+\end{minted}
+\caption{Product Type Profit Measure Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    c.custkey,
+    c.name,
+    sum(l.extendedprice * (1 - l.discount)) as revenue,
+    c.acctbal,
+    n.name,
+    c.address,
+    c.phone,
+    c.comment
+from
+    customer c,
+    orders o,
+    lineitem l,
+    nation n
+where
+    c.custkey = o.custkey
+    and l.orderkey = o.orderkey
+    and o.orderdate >= '1994-11-01'::date
+    and o.orderdate <
+      date.add('1994-11-01'::date, interval('3 month'))
+    and l.returnflag = 'R'
+    and c.nationkey = n.nationkey
+group by
+    c.custkey,
+    c.name,
+    c.acctbal,
+    c.phone,
+    n.name,
+    c.address,
+    c.comment
+order by
+    revenue desc
+limit 20;
+\end{minted}
+\caption{Returned Item Reporting Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    ps.partkey,
+    sum(ps.supplycost * ps.availqty) as value
+from
+    partsupp ps,
+    supplier s,
+    nation n
+where
+    ps.suppkey = s.suppkey
+    and s.nationkey = n.nationkey
+    and n.name = 'UNITED KINGDOM'
+group by
+    ps.partkey having
+        sum(ps.supplycost * ps.availqty) > (
+            select
+                sum(ps.supplycost * ps.availqty) *
+                  0.0010000000
+            from
+                partsupp ps,
+                supplier s,
+                nation n
+            where
+                ps.suppkey = s.suppkey
+                and s.nationkey = n.nationkey
+                and n.name = 'UNITED KINGDOM'
+        )
+order by
+    value desc;
+\end{minted}
+\caption{Important Stock Identification Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    l.shipmode,
+    sum(case
+        when o.orderpriority = '1-URGENT'
+            or o.orderpriority = '2-HIGH'
+            then 1
+        else 0
+    end) as high_line_count,
+    sum(case
+        when o.orderpriority <> '1-URGENT'
+            and o.orderpriority <> '2-HIGH'
+            then 1
+        else 0
+    end) as low_line_count
+from
+    orders o,
+    lineitem l
+where
+    o.orderkey = l.orderkey
+    and l.shipmode in ('FOB', 'TRUCK')
+    and l.commitdate < l.receiptdate
+    and l.shipdate < l.commitdate
+    and l.receiptdate >= '1997-01-01'::date
+    and l.receiptdate <
+      date.add('1997-01-01'::date, interval('1 year'))
+group by
+    l.shipmode
+order by
+    l.shipmode;
+\end{minted}
+\caption{Shipping Modes and Order Priority Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    orders.count,
+    count(*) as custdist
+from
+    (
+        select
+            c.custkey,
+            count(o.orderkey) as count
+        from
+            customer c left outer join orders o on
+                c.custkey = o.custkey
+                and o.comment not like
+                  '%unusual%deposits%'
+        group by
+            c.custkey
+    ) as orders
+group by
+    orders.count
+order by
+    custdist desc,
+    orders.count desc;
+\end{minted}
+\caption{Customer Distribution Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    100.00 * sum(case
+        when p.type like 'PROMO%'
+            then l.extendedprice * (1 - l.discount)
+        else 0
+    end) / sum(l.extendedprice * (1 - l.discount)) as promo_revenue
+from
+    lineitem l,
+    part p
+where
+    l.partkey = p.partkey
+    and l.shipdate >= '1997-07-01'::date
+    and l.shipdate <
+      date.add('1997-07-01'::date, interval('1 month'));
+\end{minted}
+\caption{Promotion Effect Query}
+\end{listing}
+
+\setcounter{listing}{15}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    p.brand,
+    p.type,
+    p.size,
+    count(distinct ps.suppkey) as supplier_cnt
+from
+    partsupp ps,
+    part p
+where
+    p.partkey = ps.partkey
+    and p.brand <> 'Brand#42'
+    and p.type not like 'MEDIUM ANODIZED%'
+    and p.size in (15, 30, 20, 2, 3, 36, 37, 38)
+    and ps.suppkey not in (
+        select
+            s.suppkey
+        from
+            supplier s
+        where
+            s.comment like '%Customer%Complaints%'
+    )
+group by
+    p.brand,
+    p.type,
+    p.size
+order by
+    supplier_cnt desc,
+    p.brand,
+    p.type,
+    p.size;
+\end{minted}
+\caption{Parts/Supplier Relationship Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    sum(l.extendedprice) / 7.0 as avg_yearly
+from
+    lineitem l,
+    part p
+where
+    p.partkey = l.partkey
+    and p.brand = 'Brand#22'
+    and p.container = 'LG JAR'
+    and l.quantity < (
+        select
+            0.2 * avg(l.quantity)
+        from
+            lineitem l
+        where
+            l.partkey = p.partkey
+    );
+\end{minted}
+\caption{Small-Quantity-Order Revenue Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    c.name,
+    c.custkey,
+    o.orderkey,
+    o.orderdate,
+    o.totalprice,
+    sum(l.quantity)
+from
+    customer c,
+    orders o,
+    lineitem l
+where
+    o.orderkey in (
+        select
+            l.orderkey
+        from
+            lineitem l
+        group by
+            l.orderkey having
+                sum(l.quantity) > 313
+    )
+    and c.custkey = o.custkey
+    and o.orderkey = l.orderkey
+group by
+    c.name,
+    c.custkey,
+    o.orderkey,
+    o.orderdate,
+    o.totalprice
+order by
+    o.totalprice desc,
+    o.orderdate
+limit 100;
+\end{minted}
+\caption{Large Volume Customer Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    sum(l.extendedprice* (1 - l.discount)) as revenue
+from
+    lineitem l,
+    part p
+where
+    (
+        p.partkey = l.partkey
+        and p.brand = 'Brand#23'
+        and p.container in (
+            'SM CASE', 'SM BOX', 'SM PACK', 'SM PKG'
+        )
+        and l.quantity >= 8 and l.quantity <= 8 + 10
+        and p.size between 1 and 5
+        and l.shipmode in ('AIR', 'AIR REG')
+        and l.shipinstruct = 'DELIVER IN PERSON'
+    )
+    or
+    (
+        p.partkey = l.partkey
+        and p.brand = 'Brand#23'
+        and p.container in (
+            'MED BAG', 'MED BOX', 'MED PKG', 'MED PACK'
+        )
+        and l.quantity >= 17 and l.quantity <= 17 + 10
+        and p.size between 1 and 10
+        and l.shipmode in ('AIR', 'AIR REG')
+        and l.shipinstruct = 'DELIVER IN PERSON'
+    )
+    or
+    (
+        p.partkey = l.partkey
+        and p.brand = 'Brand#24'
+        and p.container in (
+            'LG CASE', 'LG BOX', 'LG PACK', 'LG PKG'
+        )
+        and l.quantity >= 24 and l.quantity <= 24 + 10
+        and p.size between 1 and 15
+        and l.shipmode in ('AIR', 'AIR REG')
+        and l.shipinstruct = 'DELIVER IN PERSON'
+    );
+\end{minted}
+\caption{Discounted Revenue Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    s.name,
+    s.address
+from
+    supplier s,
+    nation n
+where
+    s.suppkey in (
+        select
+            ps.suppkey
+        from
+            partsupp ps
+        where
+            ps.partkey in (
+                select
+                    p.partkey
+                from
+                    part p
+                where
+                    p.name like 'mint%'
+            )
+            and ps.availqty > (
+                select
+                    0.5 * sum(l.quantity)
+                from
+                    lineitem l
+                where
+                    l.partkey = ps.partkey
+                    and l.suppkey = ps.suppkey
+                    and l.shipdate >=
+                      '1994-01-01'::date
+                    and l.shipdate <
+                      date.add('1994-01-01'::date, interval('1 year'))
+            )
+    )
+    and s.nationkey = n.nationkey
+    and n.name = 'KENYA'
+order by
+    s.name;
+\end{minted}
+\caption{Potential Part Promotion Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    s.name,
+    count(*) as numwait
+from
+    supplier s,
+    lineitem l1,
+    orders o,
+    nation n
+where
+    s.suppkey = l1.suppkey
+    and o.orderkey = l1.orderkey
+    and o.orderstatus = 'F'
+    and l1.receiptdate > l1.commitdate
+    and exists (
+        select
+            1
+        from
+            lineitem l2
+        where
+            l2.orderkey = l1.orderkey
+            and l2.suppkey <> l1.suppkey
+    )
+    and not exists (
+        select
+            1
+        from
+            lineitem l3
+        where
+            l3.orderkey = l1.orderkey
+            and l3.suppkey <> l1.suppkey
+            and l3.receiptdate > l3.commitdate
+    )
+    and s.nationkey = n.nationkey
+    and n.name = 'INDONESIA'
+group by
+    s.name
+order by
+    numwait desc,
+    s.name
+limit 100;
+\end{minted}
+\caption{Suppliers Who Kept Orders Waiting Query}
+\end{listing}
+
+\begin{listing}[!ht]
+\begin{minted}[fontsize=\small]{sql}
+select
+    custsale.cntrycode,
+    count(*) as numcust,
+    sum(custsale.acctbal) as totacctbal
+from
+    (
+        select
+            substr(c.phone, 0, 2) as cntrycode,
+            c.acctbal
+        from
+            customer c
+        where
+            substr(c.phone, 0, 2) in
+                ('24', '18', '27', '28', '29', '10', '17')
+            and c.acctbal > (
+                select
+                    avg(c.acctbal)
+                from
+                    customer c
+                where
+                    c.acctbal > 0.00
+                    and substr(c.phone, 0, 2) in
+                        ('24', '18', '27', '28', '29', '10', '17')
+            )
+            and not exists (
+                select
+                    1
+                from
+                    orders o
+                where
+                    o.custkey = c.custkey
+            )
+    ) as custsale
+group by
+    custsale.cntrycode
+order by
+    custsale.cntrycode;
+\end{minted}
+\caption{Global Sales Opportunity Query}
+\end{listing}

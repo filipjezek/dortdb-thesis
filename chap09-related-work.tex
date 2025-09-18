@@ -1,0 +1,87 @@
+\chapter{Related work}
+\label{chap:related-work}
+
+Now that we have established DortDB, evaluated its performance, and seen its user interface and programmer interface, we can properly compare it with existing solutions. First, we will compare DortDB to other multimodel database systems. Then, we will inspect a dramatically different approach to universal multimodel queries. Lastly, we will examine leading in-memory JavaScript databases.
+
+\section{ArangoDB}
+
+ArangoDB\footnote{\url{https://arangodb.com/multi-model-db/}} is a highly popular multimodel database. Its base data model is a graph, but it also supports vector data, as well as hierarchical document data, key-value, or full-text search. ArangoDB features its own query language called AQL, which can seamlessly combine all of the mentioned data models. Its query optimizer is very powerful, as evidenced by our benchmarks. DortDB is outmatched in all regards. The only edge DortDB might have is the possibility that if a new data model emerged, DortDB could incorporate it in a more straightforward way.
+
+\begin{listing}[!ht]
+\begin{minted}{text}
+LET personlist = (
+  FOR post IN INBOUND CONCAT("Product/", @key) PostHasTag
+  FOR person IN INBOUND post._id PersonHasPost
+  LIMIT 100
+  RETURN person._key
+)
+FOR order IN Order
+FILTER order.OrderDate > "2022"
+AND @key IN order.Orderline[*].productId
+AND order.PersonId IN UNIQUE(personlist)
+RETURN DISTINCT(order.PersonId)
+\end{minted}
+\caption{Example of an AQL query. It is the ArangoDB version of UniBench query 2. It selects customers who have bought a specific product and posted about it. The query combines graph and document models.}
+\end{listing}
+
+\section{OrientDB}
+
+OrientDB\footnote{\url{https://orientdb.dev/}} is an open-source document and graph database. It claims to be the first multimodel database in the world. It offers tools for ETL (extract, transform, load) pipelines. While we were unable to import the UniBench data into the most recent version of OrientDB, we have tested the performance of an older build. This time, DortDB comes close in some specific queries, as OrientDB is not optimized for relational workloads. Compared to DortDB, OrientDB is less flexible and harder to initially set up. It is, however, much more powerful when it comes to graph queries. It uses an extended version of SQL without joins.
+
+\begin{listing}[!ht]
+\begin{minted}[ignorelexererrors=true]{sql}
+SELECT $person
+LET $list = (
+  SELECT IN('PostHasTag').IN('PersonHasPost').id AS pid
+  FROM `Product`
+  WHERE productId = :id
+), $person = (
+  SELECT PersonId, Orderline.productId
+  FROM Order
+  WHERE OrderDate > "2022"
+  AND PersonId IN $list
+  AND :id IN Orderline.productId
+)
+\end{minted}
+\caption{The same query written in OrientDB SQL.}
+\end{listing}
+
+\section{MMQL}
+
+Our approach to universal querying of multimodel data is to combine suitable languages as necessary, combining them all into a unified algebra. Arguably, a more intuitive approach is to design a query language that could query anything regardless of its data model. MMQL\cite{DBLP:journals/is/KoupilCH25} is a multimodel query language based on category theory. Practically, it is based on SPARQL syntax, where SPARQL is a graph query language developed for querying linked data. The implemented proof of concept parses the query into multiple model-specific queries, which are dispatched to connected database systems. MMQL then combines the results, joining data and handling data redundancies. The proposed approach bears similarities to polystores, but it aims to be universal in its support of existing database systems and data models.
+
+DortDB and MMQL solve the same problem in opposite ways: MMQL uses a single language and multiple storage systems, while DortDB stores all of the data in one place and queries it with multiple languages at once. DortDB's approach is possible mainly because DortDB keeps all of the data in main memory, and thus does not need to consider storage methods most suited for specific data models. The main advantage of DortDB is that no mapping of the underlying data to the category model is necessary. On the other hand, MMQL can leverage existing highly performant systems, leading to much better performance.
+
+
+\begin{listing}[!ht]
+\begin{minted}[ignorelexererrors=true]{sparql}
+SELECT {
+  ?customer ordered ?productName ;
+    name ?customerName .
+}
+WHERE {
+  ?product 49 ?productName ;
+    -39/36 ?order .
+
+  ?order -23/21 ?customer .
+  ?customer 3 ?customerName .
+
+  FILTER(?productName = "Lord of the Rings")
+}
+\end{minted}
+\caption{Example of a query written in MMQL, taken from the original thesis\cite{DBLP:journals/is/KoupilCH25}.}
+\end{listing}
+
+\section{AlaSQL}
+
+AlaSQL\footnote{\url{https://github.com/AlaSQL/alasql}} is an open-source in-memory SQL database for JavaScript. It comes with a large number of various features. It supports most of the SQL-99 standard, includes syntax for interacting with JSON documents, and a limited form of graph queries. It allows the developer to query existing data structures and to define custom functions and aggregates. It is also possible to query and modify data stored in XLSX, CSV, or JSON files.
+
+On the other hand, the addition of many of these features seems to have been haphazard. This resulted in code that is hard to maintain or extend and that is not very performant outside of relatively simple queries. The query plans are compiled into a single JavaScript function using text concatenation. While this certainly makes the execution faster, it does not allow for any complex optimizations.
+
+DortDB's functionality (in regard to SQL) is not as rich, but it is easily extensible and a lot faster when it comes to more complex queries. While AlaSQL exposes the ASTs created by parsing queries, the classes themselves cannot be imported (and thus instantiated, unless resorting to less savory programming practices), and there is no easy way to execute a modified AST. DortDB is also more modular and, as a result, is substantially smaller.
+
+\section{SQL.js}
+
+SQL.js\footnote{\url{https://sql.js.org/}} is SQLite\footnote{\url{https://sqlite.org/}} compiled into WebAssembly. As a result, it is highly performant and stable, owing to more than 20 years of development. It can be used as an in-memory database, but it can also store data in special database files. SQLite claims to be the world's most used database engine.
+
+DortDB is predictably a lot slower and does not support as many SQL features as SQLite. Unlike SQLite, it can query existing JavaScript data structures. As SQLite runs in WebAssembly, all of the data it can receive from JavaScript must be serialized and then deserialized. Additionally, DortDB offers extensibility in the form of user-defined functions, aggregates, operators, custom optimizer rules, and custom secondary indices. While SQL.js can be extended as well, it requires writing extensions for SQLite in C and recompiling the whole library, meaning that it cannot be easily linked into the usual web development workflow. It also naturally does not expose ASTs or the logical plan.

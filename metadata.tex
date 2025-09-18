@@ -33,10 +33,10 @@
 \def\DeptType{Department}
 
 % Thesis supervisor: name, surname and titles
-\def\Supervisor{Michal Kopecký}
+\def\Supervisor{RNDR. Michal Kopecký, Ph.D.}
 
 % Supervisor's department (again according to Organizational structure of MFF)
-\def\SupervisorsDepartment{}
+\def\SupervisorsDepartment{Department of Software Engineering}
 
 % Study programme (does not apply to rigorosum theses)
 \def\StudyProgramme{Computer Science - Software and Data Engineering}
@@ -44,24 +44,18 @@
 % An optional dedication: you can thank whomever you wish (your supervisor,
 % consultant, who provided you with tea and pizza, etc.)
 \def\Dedication{%
-\xxx{Dedication.}
+I would like to sincerely thank Michal Kopecký, my supervisor. Similarly, I would like to thank Irena Holubová, Pavel Koupil, and Jáchym Bártík (in no particular order). I very much appreciate the hours spent on consultations, fresh ideas, invaluable feedback, patience, and enthusiasm. I also want to express my gratitude to my friends and family for their unconditional support.
 }
 
 % Abstract (recommended length around 80-200 words; this is not a copy of your thesis assignment!)
 \def\Abstract{%
-\xxx{Use the most precise, shortest sentences that state what problem the
-thesis addresses, how it is approached, pinpoint the exact result achieved, and
-describe the applications and significance of the results. Highlight anything
-novel that was discovered or improved by the thesis. Maximum length is 200
-words, but try to fit into 120. Abstracts are often used for deciding if
-a reviewer will be suitable for the thesis; a well-written abstract thus
-increases the probability of getting a reviewer who will like the thesis.}
+This thesis introduces DortDB, a TypeScript in-memory database. DortDB is entirely modular and extensible. It can be configured with different query languages and can combine multiple languages in a single query. To this end, we have designed the unified algebra that supports relational, document, and graph models. We have implemented a query optimizer that optimizes the combined logical plan across language boundaries, and a system for extensible secondary indices. Part of the thesis is the DortDB Showcase, a GUI for inspecting logical plans, experimenting with various optimizations, and querying data. We have evaluated DortDB with other multimodel databases on the UniBench benchmark, and compared it with two JavaScript in-memory SQL databases using the TPC-H queries.
 }
 
 % 3 to 5 keywords (recommended) separated by \sep
 % Keywords are useful for indexing and searching for the theses by topic.
 \def\ThesisKeywords{%
-SQL\sep Relational Data Model\sep JSON\sep In-memory database
+SQL\sep Relational Data Model\sep JSON\sep In-memory database\sep Multimodel database
 }
 
 % If any of your metadata strings contains TeX macros, you need to provide
@@ -87,9 +81,11 @@ SQL\sep Relational Data Model\sep JSON\sep In-memory database
 \def\StudyProgrammeCS{Informatika - Softwarové a datové inženýrství }
 
 \def\ThesisKeywordsCS{%
-SQL\sep Relační model dat\sep JSON\sep In-memory databáze
+SQL\sep Relační model dat\sep JSON\sep In-memory databáze\sep Multimodelová databáze
 }
 
+%This thesis introduces DortDB, a TypeScript in-memory database. DortDB is entirely modular and extensible. It can be configured with different query languages and can combine multiple languages in a single query. To this end, we have designed the unified algebra that supports relational, document, and graph models. We have implemented a query optimizer that optimizes the combined logical plan across language boundaries, and a system for extensible secondary indices. Part of the thesis is the DortDB Showcase, a GUI for inspecting logical plans, experimenting with various optimizations, and querying data. We have evaluated DortDB with other multimodel databases on the UniBench benchmark, and compared it with two JavaScript in-memory SQL databases using the TPC-H queries.
+
 \def\AbstractCS{%
-\xxx{Abstrakt práce přeložte také do češtiny.}
+Tato práce uvádí DortDB, in-memory databázi implementovanou v TypeScriptu. \mbox{DortDB} je plně modulární a rozšiřitelná. V DortDB lze používat různé dotazovací jazyky a je možné několik jazyků střídat i v rámci jednoho dotazu. Za tímto účelem jsme navrhli sjednocenou algebru, která podporuje relační, dokumentový, i grafový datový model. Implementovali jsme optimizer dotazů, který je díky společné algebře schopen optimalizovat dotazy napříč různými jazyky. Dále jsme navrhli systém rozšiřitelných indexů. Součástí práce je DortDB Showcase, grafické uživatelské rozhraní pro zkoumání logických plánů, experimentaci s různými optimizacemi a dotazování nad daty. DortDB jsme vyhodnotili spolu s jinými multimodelovými databázemi na UniBench testech. Také jsme DortDB srovnali se dvěma dalšími in-memory JavaScriptovými databázemi na dotazech z TPC-H.
 }

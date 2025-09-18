@@ -1,0 +1,43 @@
+\chapter{Background}
+\label{chap:background}
+
+\section{Web Browser Environment}
+
+The web browser is an environment that differs from other runtimes in several key ways. Application code (with some exceptions) has to be sent over the network each time the user accesses a website. This often happens in less-than-ideal conditions, such as on a cellular network. In 2025, mobile devices were responsible for 62\% of web requests\cite{statcounter_platform_share}. It is imperative to reduce application size as much as possible. The median web page size was 2700 KB and 2500 KB for desktop and mobile user agents. Of this, JavaScript made up 670 KB and 610 KB respectively\cite{httparchive_page_weight_2025}.
+
+The JavaScript code used on the frontend is, in large part, asynchronous. The program must respond to many events, be it user input or network communication. Regardless, it is simple to avoid any race conditions, because the code is not truly parallel. JavaScript runs in a single thread, and asynchronicity is implemented using the event loop. The event loop is a job queue that schedules code waiting for completion of an asynchronous action in the form of a callback. These callbacks are guaranteed to be entirely processed before any other job is handled. Event loop divides jobs into microtasks and macrotasks, where microtasks have higher priority and consist mainly of Promises.
+
+\begin{figure}[h!]
+  \centering
+  \includesvg[width=0.6\textwidth]{img/eventLoop-full.svg}
+  \caption{Event loop diagram. \emph{Ilya Kantor}. \protect\footnotemark}
+  \label{fig:event-loop}
+\end{figure}
+
+\footnotetext{\url{https://github.com/javascript-tutorial/en.javascript.info/blob/540d753e90789205fc6e75c502f68382c87dea9b/2-ui/99-ui-misc/03-event-loop/eventLoop-full.svg}}
+
+JavaScript in web browsers offers a limited form of multithreading in the form of Web Workers. A Web Worker runs a separate JavaScript file in another thread and another context. In order to avoid concurrency problems, a Web Worker cannot access the main thread context. Instead, it must communicate with the main thread using a message API. Objects that are part of the messages are cloned rather than referenced. Some specific objects, such as ArrayBuffers, can be transferred instead of copied.
+
+Modern web browsers support running WebAssembly alongside JavaScript. WebAssembly is a compilation target for languages like Rust or C++, and it offers near-native performance. Existing applications can be compiled into WebAssembly and run in the browser. One such example is SQL.js\footnote{\url{https://sql.js.org/}}, which is in fact recompiled SQLite. WebAssembly modules can also export (and import) JavaScript functions, allowing interoperation between the two. It is possible to pass complex values to WebAssembly, but this is again done by copying and serializing the data. Some values currently cannot be passed at all, including non-builtin class instances.
+
+\section{Multimodel Data}
+
+Historically, database systems stored data in a single model, usually the relational model. While this has many benefits, such as consistency and uniformity of modeling, in some use cases, it may make more sense to combine data in multiple models. The key motivation behind multimodel data is the increasing complexity and variety of modern data workloads. Different types of applications require different data representations for optimal performance, scalability, and flexibility. For instance, relational tables are well-suited for structured transactional data, JSON or XML documents allow for semi-structured storage of units of data, e.g., in e-commerce, and graph models are ideal for capturing complex relationships such as social networks. 
+
+The multimodel data storage can be divided into polystores and multimodel databases. Polystores are systems combining multiple heterogeneous database systems. The queries are split into subqueries issued to the underlying databases, and the results are combined by the polystore and presented back to the user. A leading example of polystores is BigDAWG\cite{duggan2015bigdawg}. On the other hand, multimodel databases combine multiple data models in a single database, often extending the query language for one of the data models with constructs for additional models. The existing multimodel databases are compared in a survey\cite{lu2019multi}.
+
+\subsection{Relational model}
+
+The relational data model is a foundational model for data management, first introduced by E. F. Codd in 1970\cite{codd1970relational}. It organizes data into relations, which are formally defined as sets of tuples, and more intuitively understood as tables consisting of rows and columns. Each relation has a schema that defines its structure. The model can be queried with relational algebra or relational calculus, but the de facto relational language is SQL.
+
+\subsection{Document model}
+
+In the document model, the primary unit of data is a document. Documents are semi-structured self-describing aggregates, typically encoded as JSON or XML. The document model offers greater schema flexibility at the cost of potential data redundancy. It is efficient for hierarchical data, but is not suitable for relational operations such as joins.
+
+\subsection{Graph model}
+
+The graph model is based on mathematical graphs, which model data into vertices (nodes) and edges (relationships). The graph query languages are either declarative, such as Cypher or GQL, or imperative, describing how the graph is to be traversed, such as Gremlin or AQL.
+
+\subsection{Key-value model}
+
+The key-value model is very simple. It may be thought of as a hash table or an associative array. It is designed to quickly store and retrieve opaque values with unique keys, but it is not very suitable for transactional or analytical workloads. 
